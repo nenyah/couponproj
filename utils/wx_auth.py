@@ -2,7 +2,7 @@ import json
 
 import requests
 
-AppSecret = 'fadbadb4ae6d64291b1f62a5d4e63d2e'
+AppSecret = '*'
 js_code = ''
 
 headers = {
@@ -14,7 +14,7 @@ url = 'https://api.weixin.qq.com/sns/jscode2session?'
 # 微信认证
 def auth_code2session(js_code):
     params = {
-        'appid': 'wx5e9dd7985ded64b1',
+        'appid': '*',
         'secret': AppSecret,
         'js_code': js_code,
         'grant_type': 'authorization_code'
