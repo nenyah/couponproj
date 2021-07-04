@@ -1,6 +1,10 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 
-__all__ = ('User', 'Activity', 'Token', 'Coupon', 'CouponUse')
+from client.models import Verifier, Client
+
+User = get_user_model()
+__all__ = ('WechatUser', 'Activity', 'Token', 'Coupon', 'CouponUse')
 
 
 # Create your models here.
@@ -14,7 +18,7 @@ class Base(models.Model):
 
 
 # 用户实体类
-class User(Base):
+class WechatUser(Base):
     user_uuid = models.CharField(max_length=64, verbose_name='uuid', unique=True)
     username = models.CharField(max_length=32, null=True, verbose_name='用户名')
     user_js_code = models.CharField(max_length=64, verbose_name='用户js_code')
@@ -35,6 +39,10 @@ class User(Base):
 # 活动
 class Activity(Base):
     activity = models.CharField(max_length=100, verbose_name="活动")
+    brief = models.TextField(blank=True, null=True, verbose_name="活动介绍")
+    create_by = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="创建人")
+    client = models.ManyToManyField(Client, null=True, blank=True, verbose_name="机构")
+    user = models.ManyToManyField(WechatUser, null=True, blank=True, verbose_name="用户")
 
     class Meta:
         verbose_name = '活动'
@@ -47,18 +55,25 @@ class Activity(Base):
 # Token
 class Token(Base):
     token = models.UUIDField(verbose_name='token')
-    user = models.OneToOneField(to=User, on_delete=models.CASCADE, verbose_name='关联用户')
+    user = models.OneToOneField(to=WechatUser, on_delete=models.CASCADE, verbose_name='关联用户')
 
     class Meta:
         verbose_name = 'token'
         verbose_name_plural = verbose_name
 
+    def __str__(self):
+        return self.token
+
+
+coupon_type_choices = ((1, '满减优惠券'), (2, '通用优惠券'))
+
 
 # 优惠券
 class Coupon(Base):
+    create_by = models.ForeignKey(User, default=1, on_delete=models.CASCADE, verbose_name="创建人")
     activity = models.ForeignKey(Activity, on_delete=models.CASCADE, verbose_name="活动")
+    user = models.ManyToManyField(WechatUser, null=True, blank=True, verbose_name="用户")
     coupon_name = models.CharField(max_length=64, verbose_name='优惠券标题')
-    coupon_type_choices = ((1, '满减优惠券'), (2, '通用优惠券'))
     coupon_type = models.IntegerField(choices=coupon_type_choices, verbose_name='优惠券类型')
     amount = models.CharField(max_length=32, verbose_name='等值金额')
     coupon_number = models.PositiveIntegerField(verbose_name='数量')
@@ -75,17 +90,20 @@ class Coupon(Base):
         verbose_name_plural = verbose_name
 
 
+status_choices = ((1, '未使用'), (2, '已使用'), (3, '已过期'))
+
+
 # 优惠券使用
 class CouponUse(Base):
-    user = models.ForeignKey(to=User, on_delete=models.CASCADE, verbose_name='绑定用户')
-    coupon = models.ForeignKey(to=Coupon, on_delete=models.CASCADE, verbose_name='优惠券')
-    status_choices = ((1, '未使用'), (2, '已使用'), (3, '已过期'))
+    user = models.ForeignKey(WechatUser, on_delete=models.CASCADE, verbose_name='绑定用户')
+    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE, verbose_name='优惠券')
     status = models.IntegerField(choices=status_choices, verbose_name='用户优惠券状态')
     obtain_time = models.DateTimeField(verbose_name='领取时间')
-    coupon_use_time = models.DateTimeField(null=True, verbose_name='使用时间')
+    coupon_use_time = models.DateTimeField(null=True, blank=True, verbose_name='使用时间')
+    verifier = models.ForeignKey(Verifier, on_delete=models.DO_NOTHING, verbose_name="核销员", null=True)
 
     def __str__(self):
-        return '{}-{}'.format(self.user, self.coupon)
+        return '{}-{}-{}'.format(self.user, self.coupon, self.get_status_display())
 
     class Meta:
         verbose_name = '优惠券使用记录'

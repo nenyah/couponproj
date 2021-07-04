@@ -1,12 +1,20 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 
+User = get_user_model()
 __all__ = ('Client', 'Verifier')
 
-# Create your models here.
+
+# 基类
+class Base(models.Model):
+    created = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    modified = models.DateTimeField(auto_now=True, verbose_name="修改时间")
+
+    class Meta:
+        abstract = True
+
+
 # 机构
-from coupon.models import Base
-
-
 class Client(Base):
     client = models.CharField(max_length=100, verbose_name="机构")
 
